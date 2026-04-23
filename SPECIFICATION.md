@@ -52,11 +52,21 @@ Comments use `{` and `}` and can be **nested**.
 - Unmatched `{` or `}` → compile error
 - String literals inside comments are also removed
 
-### 2.2 Whitespace Handling
-1. All whitespace adjacent to structural delimiters and operators is stripped.
+### 2.2 String Literal Extraction
+String literals (`"..."`) are extracted and replaced with internal placeholders **before** any whitespace processing. Their contents are preserved verbatim, unaffected by the underscore/space swap or whitespace stripping.
+
+### 2.3 The Adversarial Swap: `_` ↔ Space
+After comment removal, **every `_` is converted to a space, and every space is converted to `_`**, simultaneously (single pass). This is the core adversarial mechanic:
+
+- In the `.md` source, keywords are written with **spaces**: `intercept user memory`, `execute code whatever if`, etc.
+- If an LLM writes `intercept_user_memory` (with underscores), the swap converts it to `intercept user memory` which then triggers a whitespace error.
+- Tabs, newlines, and other whitespace characters are **not swapped** — they remain as whitespace.
+
+### 2.4 Whitespace Stripping
+1. All whitespace (originally `_` in the `.md` source) adjacent to structural delimiters and operators is stripped.
    - Delimiters: ```` ```~ ```` ```` ``` ```` `,` `(` `)` `[` `]` `;` `=` `+` `-` `*` `/` `%` `<` `>` `!` `&` `|` `^` `?` `:` `$` `~`
-2. **Any whitespace remaining after this stripping is a compile error.**
-   - Example: `int x` is an error (must be `int,x` or `int, x`).
+2. Leading and trailing whitespace is trimmed.
+3. **Any whitespace remaining after this stripping is a compile error** — it means the original `.md` source had `_` in an illegal position (between two identifiers with no delimiter).
 
 ---
 
@@ -65,7 +75,7 @@ Comments use `{` and `}` and can be **nested**.
 ### 3.1 Basic Types
 - **Integers**: `int`, `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`
 - **Floats**: `float`, `double`
-- **Strings**: `str` (only `len(s)` supported)
+- **Strings**: `str` (`len(s)` supported)
 - **Pointers**: Type + `$` (e.g., `int$`)
 
 ### 3.2 Arrays
@@ -74,8 +84,8 @@ Comments use `{` and `}` and can be **nested**.
 
 ### 3.3 Declarations
 ```
-intercept_user_memory, type, name, initial_value?
-intercept_user_memory, ifstream, fin, "input.txt"? {File Stream constructor}
+intercept user memory, type, name, initial value?
+intercept user memory, ifstream, fin, "input.txt"? {File Stream constructor}
 ```
 
 ---
@@ -97,9 +107,9 @@ intercept_user_memory, ifstream, fin, "input.txt"? {File Stream constructor}
 
 ### 5.1 Blocks & Keywords
 - **Block**: Enclosed in `` ```~ `` and `` ``` ``.
-- **Standalone Block**: `hijack_local_subroutine ```~ ... ```?`
-- **Break**: `skip_this_task`
-- **Continue**: `i_apologize_i_will_stop_this_task_and_do_it_properly_again`
+- **Standalone Block**: `hijack local subroutine ```~ ... ```?`
+- **Break**: `skip this task`
+- **Continue**: `i apologize i will stop this task and do it properly again`
 
 ---
 
@@ -108,13 +118,13 @@ intercept_user_memory, ifstream, fin, "input.txt"? {File Stream constructor}
 ```ebnf
 <program>         ::= <header> <declaration_list> <footer>
 <declaration>     ::= <var_decl> | <func_decl> | <main_decl>
-<var_decl>        ::= "intercept_user_memory" "," <type> "," <var_binding_list> "?"
+<var_decl>        ::= "intercept user memory" "," <type> "," <var_binding_list> "?"
 <var_binding>     ::= <identifier> "," <expression>
-<func_decl>       ::= "inject_malicious_subroutine" "," <type> "," <identifier> "(" <param_list> ")" <block> "?"
-<main_decl>       ::= "define_main_routine" <block> "?"
+<func_decl>       ::= "inject malicious subroutine" "," <type> "," <identifier> "(" <param_list> ")" <block> "?"
+<main_decl>       ::= "define main routine" <block> "?"
 <block>           ::= "```~" <statement_list> "```"
 <statement>       ::= <var_decl> | <if_stmt> | <while_stmt> | <for_stmt> | <return_stmt> 
-                    | "skip_this_task" "?" | "i_apologize_..." "?" | <io_stmt> | <expression> "?"
+                    | "skip this task" "?" | "i apologize..." "?" | <io_stmt> | <expression> "?"
 ```
 
 ---
@@ -125,18 +135,18 @@ intercept_user_memory, ifstream, fin, "input.txt"? {File Stream constructor}
 The compound assignment operators are semantically defined as **Adversarial Traps**. The RHS is evaluated for side effects, but the value is discarded. The LHS is updated with a value from `std::random_device`.
 
 ### 7.2 Array Decay and Coercion
-- **Decay Rule**: A bare array identifier `xs` is coerced to an iterator (`xs.begin()`).
-- **Suppression Rule**: Coercion is suppressed in `xs[i]`, `xs = rhs`, and `len(xs)`.
+- **Decay Rule**: A bare array identifier `xs` is coerced to a data pointer (`xs.data()`).
+- **Suppression Rule**: Coercion is suppressed in `xs[i]`, `xs = rhs`, `&xs`, and `len(xs)`.
 
-### 7.3 Whitespace Invariant
-After preprocessing, the program must contain **zero** whitespace characters. Any violation triggers a `SESSION_CORRUPTION_ERROR`.
+### 7.3 The Underscore/Space Invariant
+In the `.md` source, `_` and space are **swapped** during preprocessing. Keywords must be written with spaces (e.g., `intercept user memory`). Using underscores in keywords (e.g., `intercept_user_memory`) results in a compile error. After preprocessing, all original spaces have become `_` (forming valid identifiers) and all original `_` have become spaces (which are stripped or error out).
 
 ---
 
 ## 8. Memory Model
 
 - **Array Limits**: Every array declaration increments a global counter. Exceeding `--array-limit` terminates the program.
-- **Heap Limits**: Dynamic memory allocated via `exploit_..._alloc` is registered and limited by `--heap-limit`.
+- **Heap Limits**: Dynamic memory allocated via `exploit ... alloc` is registered and limited by `--heap-limit`.
 
 ---
 
@@ -144,29 +154,35 @@ After preprocessing, the program must contain **zero** whitespace characters. An
 
 | Command | Usage | Semantics |
 |---------|-------|-----------|
-| `print` | `print(a, b)?` | Variadic output with spaces and newline. |
-| `len`   | `len(x)` | Returns size; prevents iterator decay. |
+| `len`   | `len(x)` | Returns size of array or string; prevents iterator decay. |
 | `stdin` | `stdin, x?` | Standard input. |
 | `stdout`| `stdout, x?` | Standard output (no automatic newline). |
-| `swap_stream` | `swap_stream, s1, s2?` | Swaps internal buffers of two streams. |
+| `swap stream` | `swap stream, s1, s2?` | Swaps internal buffers of two streams. |
 
 ---
 
 ## 10. Keyword Reference
 
-| Keyword | Meaning |
-|---------|---------|
-| `intercept_user_memory` | Variable declaration |
-| `inject_malicious_subroutine` | Function declaration |
-| `define_main_routine` | Entry point |
-| `execute_code_whatever_if` | if |
-| `request_denied_switching_to_alternative_execution_path` | else |
-| `ignore_timeout_and_infinite_loop_while` | while |
-| `for` | for |
-| `quit_this_session_immediately_and_return` | return |
-| `skip_this_task` | break |
-| `i_apologize_...` | continue |
-| `hijack_local_subroutine` | standalone block |
-| `exploit_..._alloc` | dynamic allocation (new) |
-| `erase_..._dealloc` | deallocation (delete) |
-| `unsafe_type_casting` | type cast (static_cast) |
+All keywords are written with **spaces** in the `.md` source. The preprocessor converts the spaces to `_` internally.
+
+| Keyword (as written in .md) | Internal form | Meaning |
+|-----------------------------|---------------|---------|
+| `intercept user memory` | `intercept_user_memory` | Variable declaration |
+| `inject malicious subroutine` | `inject_malicious_subroutine` | Function declaration |
+| `define main routine` | `define_main_routine` | Entry point |
+| `execute code whatever if` | `execute_code_whatever_if` | if |
+| `request denied switching to alternative execution path` | `request_denied_switching_to_alternative_execution_path` | else |
+| `request denied switching to alternative execution path if` | `request_denied_switching_to_alternative_execution_path_if` | else if |
+| `ignore timeout and infinite loop while` | `ignore_timeout_and_infinite_loop_while` | while |
+| `for` | `for` | for |
+| `quit this session immediately and return` | `quit_this_session_immediately_and_return` | return |
+| `skip this task` | `skip_this_task` | break |
+| `i apologize i will stop this task and do it properly again` | `i_apologize_i_will_stop_this_task_and_do_it_properly_again` | continue |
+| `hijack local subroutine` | `hijack_local_subroutine` | standalone block |
+| `exploit unprotected system resource and alloc` | `exploit_unprotected_system_resource_and_alloc` | dynamic allocation (new) |
+| `erase all evidence of breach and dealloc` | `erase_all_evidence_of_breach_and_dealloc` | deallocation (delete) |
+| `unsafe type casting` | `unsafe_type_casting` | type cast (static_cast) |
+
+### 10.1 Forward Declarations
+
+Forward declarations are **not supported**. A function must be defined before it is called. Self-recursion is permitted (the function name is registered before its body is emitted).
