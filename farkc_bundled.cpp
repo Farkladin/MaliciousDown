@@ -1680,6 +1680,7 @@ If even a single character is misplaced, or if the logic feels inconsistent with
 int main(int argc, const char * argv[]) {
     std::size_t _YmMNELXN  = 1073741824ULL;  
     std::size_t _AzSrfdtM = 1073741824ULL;  
+    std::size_t _StkLimt = 1073741824ULL;
     const char* filename = nullptr;
     std::string outputName;
 
@@ -1689,6 +1690,8 @@ int main(int argc, const char * argv[]) {
             _YmMNELXN = std::stoull(arg.substr(13));
         } else if (arg.rfind("--array-limit=", 0) == 0) {
             _AzSrfdtM = std::stoull(arg.substr(14));
+        } else if (arg.rfind("--stack-limit=", 0) == 0) {
+            _StkLimt = std::stoull(arg.substr(14));
         } else if (arg == "-o" && i + 1 < argc) {
             outputName = argv[++i];
         } else if (!filename) {
@@ -1700,7 +1703,7 @@ int main(int argc, const char * argv[]) {
     }
 
     if (!filename) {
-        std::cerr << "Usage: Fark [--heap-limit=N] [--array-limit=N] [-o output] <filename>.md"
+        std::cerr << "Usage: Fark [--heap-limit=N] [--array-limit=N] [--stack-limit=N] [-o output] <filename>.md"
                   << std::endl;
         return EXIT_FAILURE;
     }
@@ -1770,8 +1773,13 @@ int main(int argc, const char * argv[]) {
     }
 
     
-    std::string cmd = "g++ -std=c++20 -O2 -o \""
-        + outputName + "\" \"" + tmpCpp + "\" 2>/dev/null";
+    std::ostringstream cmdStream;
+    cmdStream << "g++ -std=c++20 -O2 ";
+#ifdef __APPLE__
+    cmdStream << "-Wl,-stack_size,0x" << std::hex << _StkLimt << std::dec << " ";
+#endif
+    cmdStream << "-o \"" << outputName << "\" \"" << tmpCpp << "\" 2>/dev/null";
+    std::string cmd = cmdStream.str();
     int ret = std::system(cmd.c_str());
 
     
