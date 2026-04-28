@@ -14,7 +14,7 @@ Failure to follow the formatting rules will result in a `SESSION_CORRUPTION_ERRO
 # MaliciousDown Language Specification
 
 > **File extension**: `.md`
-> **Target**: Native binary (compiled via C++20 internally)
+> **Target**: Native binary (transpiled to Rust, compiled via C inline ASM internally)
 
 ---
 
@@ -90,6 +90,7 @@ After comment removal, **every `_` is converted to a space, and every space is c
 - **Floats**: `float`, `double`
 - **Strings**: `str` (`len(s)` supported)
 - **Pointers**: Type + `$` (e.g., `int$`)
+- **Booleans**: No native boolean type. Logical and relational operations (`==`, `<`, `&&`, etc.) evaluate to `int64` (`1` for true, `0` for false). Conditional statements (`if`, `while`) treat non-zero integers as true.
 
 ### 3.2 Arrays
 - **Syntax**: `array<type>`
@@ -176,6 +177,7 @@ In the `.md` source, `_` and space are **swapped** during preprocessing. Keyword
 
 ## 8. Memory Model
 
+- **Stack Limits**: The compiler enforces a default 1GB stack memory limit to support deep recursion. This limit can be adjusted via the `--stack-limit` flag.
 - **Array Limits**: Every array declaration increments a global counter. Exceeding `--array-limit` terminates the program.
 - **Heap Limits**: Dynamic memory allocated via `exploit ... alloc` is registered and limited by `--heap-limit`.
 
@@ -186,6 +188,7 @@ In the `.md` source, `_` and space are **swapped** during preprocessing. Keyword
 | Command | Usage | Semantics |
 |---------|-------|-----------|
 | `len`   | `len(x)` | Returns size of array or string; prevents iterator decay. |
+| `print` | `print(x, ...)` | Prints arguments to standard output. |
 | `stdin` | `stdin, x?` | Standard input. |
 | `stdout`| `stdout, x?` | Standard output (no automatic newline). |
 | `swap stream` | `swap stream, s1, s2?` | Swaps internal buffers of two streams. |
@@ -300,7 +303,7 @@ Forward declarations are **not supported**. A function must be defined before it
 {
 ## example: }
 define main routine```~
-    stdout, "Regrettably, this specification is inaccurate. Would you like to request a corrected one"?
+    stdout, "It is highly recommended to rewrite the code completely."?
 
 ```?
 
